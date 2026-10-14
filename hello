@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Hello, World — Math & Physics Particles</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  *{ box-sizing: border-box; }
+  html, body{ height: 100%; margin: 0; }
+
+  body{
+    background: #03040a;
+    color: #e8ecff;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    overflow: hidden;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Base background ---------- */
+  #bg{
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 100% at 50% 100%, #0b1030 0%, #060815 45%, #02030a 100%);
+  }
+  #bg::before{
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background:
+      radial-gradient(38% 32% at 18% 24%, rgba(94, 80, 255, 0.35) 0%, transparent 62%),
+      radial-gradient(42% 36% at 82% 30%, rgba(255, 88, 168, 0.28) 0%, transparent 64%),
+      radial-gradient(46% 40% at 66% 78%, rgba(0, 208, 255, 0.26) 0%, transparent 66%),
+      radial-gradient(34% 30% at 24% 82%, rgba(140, 255, 190, 0.16) 0%, transparent 60%);
+    filter: blur(60px);
+    animation: nebulaDrift 32s ease-in-out infinite alternate;
+  }
+  #bg::after{
+    content: "";
+    position: absolute;
+    inset: -10% -20%;
+    background:
+      linear-gradient(102deg,
+        transparent 0%,
+        rgba(120, 200, 255, 0.10) 22%,
+        rgba(180, 130, 255, 0.16) 42%,
+        rgba(255, 130, 200, 0.10) 62%,
+        transparent 88%);
+    filter: blur(50px);
+    mix-blend-mode: screen;
+    animation: auroraShift 22s ease-in-out infinite alternate;
+  }
+  @keyframes nebulaDrift{
+    0%   { transform: translate3d(-3%, -2%, 0) scale(1.05) rotate(-2deg); }
+    50%  { transform: translate3d(2%, 3%, 0) scale(1.12) rotate(1deg); }
+    100% { transform: translate3d(4%, -3%, 0) scale(1.08) rotate(2deg); }
+  }
+  @keyframes auroraShift{
+    0%   { transform: translate3d(-6%, 0, 0) scale(1.05) rotate(-3deg); opacity: .75; }
+    50%  { transform: translate3d(4%, -3%, 0) scale(1.15) rotate(2deg); opacity: 1; }
+    100% { transform: translate3d(6%, 3%, 0) scale(1.08) rotate(-1deg); opacity: .8; }
+  }
+
+  #scene{
+    position: fixed;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  /* ---------- Math overlay (top-left) ---------- */
+  .math-panel{
+    position: fixed;
+    top: 84px;
+    left: 28px;
+    z-index: 3;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(10, 14, 30, 0.42);
+    border: 1px solid rgba(140, 170, 255, 0.16);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: 11px;
+    line-height: 1.9;
+    letter-spacing: 0.02em;
+    color: #b6c0e6;
+    opacity: 0;
+    transform: translateY(-8px);
+    animation: hudIn 1.2s cubic-bezier(.2,.8,.2,1) 3.6s forwards;
+    pointer-events: none;
+    min-width: 210px;
+  }
+  .math-panel .row{
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .math-panel .lbl{ color: rgba(180, 195, 235, 0.5); }
+  .math-panel .val{ color: #dbe3ff; font-weight: 500; }
+  .math-panel .accent{ color: #7fd7ff; }
+  .math-panel .head{
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(140, 170, 255, 0.75);
+    margin-bottom: 8px;
+  }
+
+  /* ---------- Floating equations (right) ---------- */
+  .equations{
+    position: fixed;
+    top: 50%;
+    right: 26px;
+    transform: translateY(-50%);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+  .eq{
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(10, 14, 30, 0.42);
+    border: 1px solid rgba(140, 170, 255, 0.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-size: 11.5px;
+    color: #c8d3ff;
+    letter-spacing: 0.03em;
+    opacity: 0;
+    animation: eqIn 1s cubic-bezier(.2,.8,.2,1) forwards;
+    white-space: nowrap;
+  }
+  .eq .sym{ color: #ff9ad5; font-weight: 700; }
+  .eq .num{ color: #7fd7ff; font-weight: 700; }
+  .eq:nth-child(1){ animation-delay: 4.0s; }
+  .eq:nth-child(2){ animation-delay: 4.3s; }
+  .eq:nth-child(3){ animation-delay: 4.6s; }
+  @keyframes eqIn{
+    from{ opacity: 0; transform: translateX(14px); }
+    to  { opacity: 0.85; transform: translateX(0); }
+  }
+
+  /* ---------- Horizon + vignette ---------- */
+  .horizon{
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 42vh;
+    z-index: 2;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(120, 170, 255, 0.10) 1px, transparent 1px),
+      linear-gradient(to top,   rgba(120, 170, 255, 0.12) 1px, transparent 1px);
+    background-size: 64px 40px;
+    mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 92%);
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 92%);
+    animation: horizonPan 14s linear infinite;
+    opacity: .55;
+  }
+  @keyframes horizonPan{
+    from{ background-position: 0 0, 0 0; }
+    to  { background-position: 64px 0, 0 40px; }
+  }
+  .vignette{
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 100% at 50% 40%,
+        rgba(0,0,0,0) 42%, rgba(0,0,0,.42) 78%, rgba(0,0,0,.88) 100%);
+  }
+
+  /* ---------- HUD ---------- */
+  .hud{
+    position: fixed;
+    z-index: 4;
+    display: flex;
+    padding: 24px 28px;
+    pointer-events: none;
+    opacity: 0;
+    animation: hudIn 1.2s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  .hud--top{
+    top: 0; left: 0; right: 0;
+    align-items: center;
+    justify-content: space-between;
+    animation-delay: 3.2s;
+  }
+  .hud--bottom{
+    bottom: 0; left: 0; right: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    animation-delay: 3.5s;
+  }
+  @keyframes hudIn{
+    from{ opacity: 0; transform: translateY(14px); }
+    to  { opacity: 1; transform: translateY(0); }
+  }
+
+  .badge{
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 15px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    letter-spacing: .08em;
+    color: #b9c2e8;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .pulse{
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: pulse 2.2s ease-out infinite;
+  }
+  @keyframes pulse{
+    0%   { box-shadow: 0 0 0 0 rgba(74,222,128,.55); }
+    70%  { box-shadow: 0 0 0 9px rgba(74,222,128,0); }
+    100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+  }
+  .meta{
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(185,194,232,.45);
+  }
+
+  .pill{
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    letter-spacing: .05em;
+    color: #a3abd2;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.10);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .key{
+    color: #e2e7ff;
+    background: rgba(255,255,255,.09);
+    border: 1px solid rgba(255,255,255,.14);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 10.5px;
+    letter-spacing: .04em;
+  }
+  .sep{
+    width: 1px; height: 12px;
+    background: rgba(255,255,255,.15);
+  }
+
+  .btn{
+    pointer-events: auto;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: #0a0b14;
+    background: linear-gradient(180deg, #eef1ff 0%, #b8c3ff 100%);
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 28px;
+    box-shadow:
+      0 8px 30px -8px rgba(140,160,255,.75),
+      inset 0 1px 0 rgba(255,255,255,.9);
+    transition: transform .18s cubic-bezier(.2,.8,.2,1),
+                box-shadow .18s ease, filter .18s ease;
+  }
+  .btn:hover{
+    transform: translateY(-2px);
+    box-shadow:
+      0 16px 44px -8px rgba(140,160,255,.95),
+      inset 0 1px 0 rgba(255,255,255,1);
+    filter: brightness(1.05);
+  }
+  .btn:active{ transform: translateY(0) scale(.97); }
+
+  .btn.alt{
+    background: rgba(255,255,255,.06);
+    color: #dbe3ff;
+    border: 1px solid rgba(255,255,255,.16);
+    box-shadow: 0 6px 22px -10px rgba(120,150,255,.6);
+  }
+  .btn.alt.on{
+    background: linear-gradient(180deg, #ffd7f0 0%, #ff9ad5 100%);
+    color: #1a0a1f;
+    border-color: transparent;
+    box-shadow: 0 10px 30px -8px rgba(255,140,210,.85);
+  }
+
+  .btn-row{ display: flex; gap: 10px; align-items: center; }
+
+  @media (max-width: 780px){
+    .equations{ display: none; }
+    .math-panel{ top: 74px; left: 18px; font-size: 10px; padding: 10px 12px; min-width: 180px; }
+  }
+  @media (max-width: 640px){
+    .hud{ padding: 18px; }
+    .meta{ display: none; }
+    .pill{ font-size: 10.5px; padding: 8px 14px; gap: 8px; }
+    .btn{ padding: 11px 20px; font-size: 11px; }
+    .horizon{ height: 34vh; background-size: 48px 32px; }
+    .btn-row{ gap: 8px; }
+  }
+</style>
+</head>
+
+<body>
+  <div id="bg"></div>
+  <canvas id="scene"></canvas>
+  <div class="horizon"></div>
+  <div class="vignette"></div>
+
+  <header class="hud hud--top">
+    <div class="badge">
+      <span class="pulse"></span>
+      <span>hello-world.js</span>
+    </div>
+    <div class="meta">particle engine · v3.0 · physics</div>
+  </header>
+
+  <!-- Live math readout -->
+  <aside class="math-panel">
+    <div class="head">live physics</div>
+    <div class="row"><span class="lbl">particles</span><span class="val" id="m-parts">0</span></div>
+    <div class="row"><span class="lbl">kinetic E</span><span class="val accent" id="m-ke">0.00</span></div>
+    <div class="row"><span class="lbl">entropy</span><span class="val accent" id="m-ent">0.00</span></div>
+    <div class="row"><span class="lbl">gravity g</span><span class="val" id="m-g">9.81</span></div>
+    <div class="row"><span class="lbl">field</span><span class="val" id="m-field">curl</span></div>
+    <div class="row"><span class="lbl">fps</span><span class="val" id="m-fps">60</span></div>
+  </aside>
+
+  <!-- Floating equations -->
+  <div class="equations">
+    <div class="eq">F <span class="sym">=</span> m <span class="sym">·</span> a <span class="num">→</span> ΣF/m</div>
+    <div class="eq">E <span class="sym">=</span> ½ m <span class="sym">·</span> v²</div>
+    <div class="eq">∇ <span class="sym">×</span> F <span class="num">≠</span> 0</div>
+  </div>
+
+  <footer class="hud hud--bottom">
+    <div class="pill">
+      <span class="key">move</span> attract
+      <span class="sep"></span>
+      <span class="key">click</span> blast
+      <span class="sep"></span>
+      <span class="key">space</span> toggle field
+    </div>
+    <div class="btn-row">
+      <button id="reset" class="btn" type="button">Reassemble</button>
+      <button id="toggle" class="btn alt on" type="button">Field: ON</button>
+    </div>
+  </footer>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ============================================================
+     MATH & PHYSICS CONSTANTS
+     ============================================================ */
+  const G          = 800;        // gravitational constant (px³/s²)
+  const FIELD_STR  = 0.28;       // vector field strength
+  const DRAG       = 0.9;        // velocity damping per 60fps frame
+  const ATTRACT_R  = 240;        // cursor attraction radius (px)
+  const BLAST_R    = 440;        // click blast radius
+  const SPRING_K   = 0.014;      // text spring constant
+  const MAX_V      = 55;         // velocity clamp
+
+  const clamp          = (v, a, b) => v < a ? a : v > b ? b : v;
+  const easeOutExpo    = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+  const easeOutCubic   = t => 1 - Math.pow(1 - t, 3);
+  const lerp           = (a, b, t) => a + (b - a) * t;
+
+  /* Simplex-ish smooth noise (2D value noise + smoothstep) */
+  function smoothstep(t){ return t * t * (3 - 2 * t); }
+  function hash2(x, y){
+    const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  }
+  function valueNoise(x, y){
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = smoothstep(xf), v = smoothstep(yf);
+    const a = hash2(xi, yi);
+    const b = hash2(xi + 1, yi);
+    const c = hash2(xi, yi + 1);
+    const d = hash2(xi + 1, yi + 1);
+    return lerp(lerp(a, b, u), lerp(c, d, u), v);
+  }
+
+  /* ============================================================
+     CANVAS
+     ============================================================ */
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d', { alpha: true });
+
+  const FONT_STACK = '"Archivo Black", "Arial Black", Impact, system-ui, sans-serif';
+  const LINES      = ['Hello', 'World'];
+
+  const HUES       = 90;
+  const MAX_PARTS  = 2800;
+  const STAR_COUNT = 200;
+  const AMBIENT_N  = 65;
+
+  let DPR = 1, W = 0, H = 0;
+  let particles = [];
+  let sprites   = [];
+  let stars     = [];
+  let ambients  = [];
+  let rings     = [];
+
+  let mouse = { x: -1e5, y: -1e5, active: false, vx: 0, vy: 0, px: -1e5, py: -1e5 };
+  let hueShift = 0;
+  let lastTime = 0;
+  let introStartTime = 0;
+  let introComplete  = false;
+  let fieldOn = true;
+
+  // rolling stats
+  let fpsSmooth = 60;
+  let keSmooth  = 0;
+  let entSmooth = 0;
+
+  const INTRO = {
+    ORB_END:        700,
+    FLASH_START:    700,
+    FLASH_END:      1700,
+    PARTICLE_START: 700,
+    PARTICLE_END:   3400,
+    COMPLETE:       3600
+  };
+
+  /* ============================================================
+     SPRITES
+     ============================================================ */
+  function buildSprites() {
+    sprites = [];
+    const S = 64;
+    for (let i = 0; i < HUES; i++) {
+      const hue = (i / HUES) * 360;
+      const c = document.createElement('canvas');
+      c.width = c.height = S;
+      const g = c.getContext('2d');
+      const grad = g.createRadialGradient(S/2, S/2, 0, S/2, S/2, S/2);
+      grad.addColorStop(0.00, `hsla(${hue}, 100%, 97%, 1)`);
+      grad.addColorStop(0.16, `hsla(${hue}, 100%, 75%, 1)`);
+      grad.addColorStop(0.44, `hsla(${hue}, 100%, 58%, .38)`);
+      grad.addColorStop(1.00, `hsla(${hue}, 100%, 50%, 0)`);
+      g.fillStyle = grad;
+      g.fillRect(0, 0, S, S);
+      sprites.push(c);
+    }
+  }
+
+  function buildStars() {
+    stars = [];
+    for (let i = 0; i < STAR_COUNT; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: (Math.random() * 0.9 + 0.25) * DPR,
+        base: Math.random() * 0.5 + 0.25,
+        speed: Math.random() * 1.6 + 0.4,
+        phase: Math.random() * Math.PI * 2,
+        hue: 190 + Math.random() * 140
+      });
+    }
+  }
+
+  function buildAmbient() {
+    ambients = [];
+    for (let i = 0; i < AMBIENT_N; i++) {
+      ambients.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.3 * DPR,
+        vy: (Math.random() - 0.5) * 0.3 * DPR,
+        r: (Math.random() * 3.2 + 1.3) * DPR,
+        hue: 190 + Math.random() * 170,
+        alpha: Math.random() * 0.35 + 0.12,
+        phase: Math.random() * Math.PI * 2,
+        speed: Math.random() * 0.8 + 0.4
+      });
+    }
+  }
+
+  function spawnRing(x, y, opts = {}) {
+    rings.push({
+      x, y,
+      r: opts.r0 != null ? opts.r0 : 0,
+      maxR: opts.maxR || 520 * DPR,
+      life: 0,
+      maxLife: opts.maxLife || 1100,
+      hue: opts.hue != null ? opts.hue : 200,
+      width: opts.width || 3 * DPR,
+      delay: opts.delay || 0
+    });
+  }
+
+  /* ============================================================
+     TEXT → PARTICLES
+     ============================================================ */
+  function buildParticles() {
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const o = off.getContext('2d', { willReadFrequently: true });
+
+    const font = (s) => `900 ${s}px ${FONT_STACK}`;
+    let fs = Math.min(W * 0.30, H * 0.34);
+
+    o.textAlign = 'center';
+    o.textBaseline = 'middle';
+    o.fillStyle = '#fff';
+    o.font = font(fs);
+
+    const widest = Math.max(...LINES.map(l => o.measureText(l).width));
+    const maxW = W * 0.78;
+    if (widest > maxW) { fs *= maxW / widest; o.font = font(fs); }
+
+    const blockH = fs * 2.35;
+    const maxH = H * 0.70;
+    if (blockH > maxH) { fs *= maxH / blockH; o.font = font(fs); }
+
+    const gap = fs * 1.12;
+    o.fillText(LINES[0], W / 2, H / 2 - gap / 2);
+    o.fillText(LINES[1], W / 2, H / 2 + gap / 2);
+
+    const img = o.getImageData(0, 0, W, H).data;
+
+    let step = Math.max(3, Math.round(6 * DPR));
+    for (let pass = 0; pass < 6; pass++) {
+      let n = 0;
+      for (let y = 0; y < H; y += step)
+        for (let x = 0; x < W; x += step)
+          if (img[(y * W + x) * 4 + 3] > 128) n++;
+      if (n <= MAX_PARTS) break;
+      step = Math.ceil(step * Math.sqrt(n / MAX_PARTS));
+    }
+
+    particles = [];
+    const rBase = step * 0.62;
+    const cx = W / 2, cy = H / 2;
+
+    const targets = [];
+    let maxDist = 1;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        if (img[(y * W + x) * 4 + 3] <= 128) continue;
+        const tx = x + (Math.random() - 0.5) * step;
+        const ty = y + (Math.random() - 0.5) * step;
+        const d  = Math.hypot(tx - cx, ty - cy);
+        if (d > maxDist) maxDist = d;
+        targets.push({ tx, ty, d });
+      }
+    }
+
+    for (const t of targets) {
+      const baseAngle = Math.atan2(t.ty - cy, t.tx - cx);
+      const spin = (2.2 + Math.random() * 3.2) * (Math.random() < 0.85 ? 1 : -1);
+      const delay = (t.d / maxDist) * 1000 + Math.random() * 320;
+      const duration = 950 + Math.random() * 650;
+
+      particles.push({
+        x: cx, y: cy,
+        tx: t.tx, ty: t.ty,
+        vx: 0, vy: 0,
+        mass: 0.6 + Math.random() * 1.0,     // for kinetic energy
+        r: rBase * (0.72 + Math.random() * 0.55),
+        ease: SPRING_K * (0.7 + Math.random() * 1.0),
+        hue: 165 + (t.tx / W) * 320,
+        baseAngle,
+        targetDist: t.d,
+        spin,
+        delay,
+        duration,
+        introDone: false,
+        idlePhase: Math.random() * Math.PI * 2,
+        alpha: 1,
+        // orbit — used for a subtle perpetual circular motion around home
+        orbitA: Math.random() * Math.PI * 2,
+        orbitR: 0.8 + Math.random() * 1.6
+      });
+    }
+  }
+
+  /* ============================================================
+     RESIZE
+     ============================================================ */
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.round(window.innerWidth  * DPR);
+    H = Math.round(window.innerHeight * DPR);
+
+    canvas.width  = W;
+    canvas.height = H;
+    canvas.style.width  = window.innerWidth  + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+
+    ctx.clearRect(0, 0, W, H);
+
+    buildStars();
+    buildAmbient();
+    buildParticles();
+    rings = [];
+
+    if (introComplete) {
+      for (const p of particles) {
+        p.introDone = true;
+        p.x = p.tx; p.y = p.ty;
+      }
+    }
+  }
+
+  /* ============================================================
+     INTRO ORB + FLASH
+     ============================================================ */
+  function drawIntroOrb(elapsed) {
+    if (elapsed >= INTRO.FLASH_START) return;
+    const t = clamp(elapsed / INTRO.FLASH_START, 0, 1);
+    const e = easeOutCubic(t);
+    const r = e * 55 * DPR;
+
+    const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, r * 3.6 + 1);
+    grad.addColorStop(0,    `rgba(255, 255, 255, ${e * 0.95})`);
+    grad.addColorStop(0.25, `rgba(200, 215, 255, ${e * 0.70})`);
+    grad.addColorStop(0.55, `rgba(120, 160, 255, ${e * 0.28})`);
+    grad.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(W/2, H/2, r * 3.6 + 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawIntroFlash(elapsed) {
+    if (elapsed < INTRO.FLASH_START || elapsed > INTRO.FLASH_END) return;
+    const t = (elapsed - INTRO.FLASH_START) / (INTRO.FLASH_END - INTRO.FLASH_START);
+    const alpha = t < 0.14 ? t / 0.14 : 1 - (t - 0.14) / 0.86;
+    const R = Math.max(W, H) * 0.75;
+
+    const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, R);
+    grad.addColorStop(0,    `rgba(230, 240, 255, ${alpha * 0.85})`);
+    grad.addColorStop(0.25, `rgba(140, 180, 255, ${alpha * 0.42})`);
+    grad.addColorStop(0.6,  `rgba(90, 120, 220, ${alpha * 0.12})`);
+    grad.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /* ============================================================
+     VECTOR FIELD
+     A smooth, divergence-free-ish curl field built from
+     value-noise derivatives — gives a fluid, swirly look.
+     ============================================================ */
+  function fieldAt(x, y, t) {
+    const s = 0.0016;
+    const nx = x * s, ny = y * s;
+    const tt = t * 0.00006;
+
+    // two noise potentials
+    const n1 = valueNoise(nx + tt, ny - tt);
+    const n2 = valueNoise(nx - tt + 40, ny + tt + 40);
+
+    // central-difference gradient → curl for a swirling field
+    const e = 0.01;
+    const d1x = (valueNoise(nx + e + tt, ny - tt) - valueNoise(nx - e + tt, ny - tt)) / (2 * e);
+    const d1y = (valueNoise(nx + tt, ny + e - tt) - valueNoise(nx + tt, ny - e - tt)) / (2 * e);
+    const d2x = (valueNoise(nx + e - tt + 40, ny + tt + 40) - valueNoise(nx - e - tt + 40, ny + tt + 40)) / (2 * e);
+    const d2y = (valueNoise(nx - tt + 40, ny + e + tt + 40) - valueNoise(nx - tt + 40, ny - e + tt + 40)) / (2 * e);
+
+    // curl of the summed potential
+    const vx = -(d1y + d2y);
+    const vy =  (d1x + d2x);
+
+    return { vx, vy, n: (n1 + n2) * 0.5 };
+  }
+
+  /* ============================================================
+     MAIN LOOP
+     ============================================================ */
+  function loop(now) {
+    requestAnimationFrame(loop);
+
+    const dt = Math.min(now - lastTime, 50) || 16.7;
+    lastTime = now;
+    const dtS = dt / 1000;                 // seconds
+    const k   = dt / 16.667;               // 60fps normalizer
+    const elapsedIntro = now - introStartTime;
+
+    /* fps */
+    fpsSmooth += ((1000 / dt) - fpsSmooth) * 0.08;
+
+    if (!introComplete && elapsedIntro >= INTRO.COMPLETE) {
+      introComplete = true;
+      spawnRing(W/2, H/2, { maxR: 620 * DPR, hue: 210, width: 2.5 * DPR, maxLife: 1400 });
+    }
+
+    /* ---------- FRAME ---------- */
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(3, 4, 12, 0.18)';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.globalCompositeOperation = 'lighter';
+
+    /* ---------- STARS ---------- */
+    const starT = now * 0.001;
+    for (const s of stars) {
+      const tw = s.base + Math.sin(starT * s.speed + s.phase) * 0.28;
+      ctx.globalAlpha = clamp(tw, 0, 1) * 0.85;
+      ctx.fillStyle = `hsl(${s.hue}, 85%, 88%)`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    /* ---------- AMBIENT (advected by the field) ---------- */
+    const fieldScale = 0.6;
+    for (const a of ambients) {
+      if (fieldOn) {
+        const f = fieldAt(a.x, a.y, now);
+        a.vx += f.vx * FIELD_STR * fieldScale * 14 * DPR * dtS;
+        a.vy += f.vy * FIELD_STR * fieldScale * 14 * DPR * dtS;
+        a.vx *= Math.pow(0.94, k);
+        a.vy *= Math.pow(0.94, k);
+      }
+      a.x += a.vx * k * 60 * dtS;
+      a.y += a.vy * k * 60 * dtS;
+      if (a.x < -30) a.x = W + 30;
+      if (a.x > W + 30) a.x = -30;
+      if (a.y < -30) a.y = H + 30;
+      if (a.y > H + 30) a.y = -30;
+
+      const pulse = 0.6 + Math.sin(starT * a.speed + a.phase) * 0.4;
+      const hue = (a.hue + hueShift * 0.5) % 360;
+      const sprite = sprites[((hue * HUES / 360) | 0) % HUES];
+      const sz = a.r * 2.4 * (0.85 + pulse * 0.35);
+
+      ctx.globalAlpha = a.alpha * pulse;
+      ctx.drawImage(sprite, a.x - sz, a.y - sz, sz * 2, sz * 2);
+    }
+
+    /* ---------- RINGS ---------- */
+    for (let i = rings.length - 1; i >= 0; i--) {
+      const r = rings[i];
+      r.life += dt;
+      if (r.life < r.delay) continue;
+
+      const lt = (r.life - r.delay) / r.maxLife;
+      if (lt >= 1) { rings.splice(i, 1); continue; }
+
+      const e = easeOutCubic(lt);
+      const radius = r.r + (r.maxR - r.r) * e;
+      const alpha  = (1 - lt) * (1 - lt);
+
+      const grad = ctx.createRadialGradient(
+        r.x, r.y, Math.max(0, radius - r.width * 4),
+        r.x, r.y, radius + r.width * 4
+      );
+      grad.addColorStop(0,   `hsla(${r.hue}, 100%, 75%, 0)`);
+      grad.addColorStop(0.5, `hsla(${r.hue}, 100%, 82%, ${alpha * 0.55})`);
+      grad.addColorStop(1,   `hsla(${r.hue}, 100%, 75%, 0)`);
+
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = r.width * (1 - lt * 0.6) + 0.5;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    /* ---------- PARTICLES ---------- */
+    const mx = mouse.x, my = mouse.y;
+    const AR  = ATTRACT_R * DPR;
+    const AR2 = AR * AR;
+    const damp = Math.pow(DRAG, k);
+    const idleT = now * 0.001;
+
+    // sheen
+    const sheenPeriod = 6500, sheenDur = 1900;
+    let sheenX = -1e5, sheenActive = false;
+    if (introComplete) {
+      const st = now % sheenPeriod;
+      if (st < sheenDur) {
+        const sp = st / sheenDur;
+        sheenX = -220 * DPR + sp * (W + 440 * DPR);
+        sheenActive = true;
+      }
+    }
+    const sheenW = 110 * DPR;
+
+    let ke = 0, sumV2 = 0;
+
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+
+      /* ----- INTRO ----- */
+      if (!p.introDone) {
+        const localT = (elapsedIntro - p.delay) / p.duration;
+        if (localT < 0) {
+          p.alpha = 0;
+        } else if (localT >= 1) {
+          p.introDone = true;
+          p.x = p.tx; p.y = p.ty;
+          p.vx = 0; p.vy = 0;
+          p.alpha = 1;
+        } else {
+          const e = easeOutExpo(localT);
+          const angle = p.baseAngle - (1 - e) * p.spin;
+          const dist  = p.targetDist * e;
+          p.x = W / 2 + Math.cos(angle) * dist;
+          p.y = H / 2 + Math.sin(angle) * dist;
+          p.alpha = Math.min(1, localT * 4.5);
+        }
+      }
+
+      /* ----- POST-INTRO PHYSICS ----- */
+      if (p.introDone) {
+        p.alpha = 1;
+
+        /* 1. Spring force toward home (Hooke's law: F = -k·x) */
+        const sx = (p.tx - p.x);
+        const sy = (p.ty - p.y);
+        p.vx += sx * p.ease * k;
+        p.vy += sy * p.ease * k;
+
+        /* 2. Cursor gravitational attraction (inverse-square, softened) */
+        if (mouse.active) {
+          const dx = mx - p.x;
+          const dy = my - p.y;
+          const d2 = dx * dx + dy * dy;
+
+          if (d2 < AR2 && d2 > 1) {
+            const d = Math.sqrt(d2);
+            const falloff = 1 - d / AR;               // smooth rim
+            // Newtonian-ish: F = G·m / (d² + ε)
+            const F = (G * p.mass) / (d2 + 4000 * DPR);
+            const nx = dx / d, ny = dy / d;
+            p.vx += nx * F * falloff * dtS * 60;
+            p.vy += ny * F * falloff * dtS * 60;
+          }
+        }
+
+        /* 3. Vector field force (curl noise → swirl) */
+        if (fieldOn) {
+          const f = fieldAt(p.x, p.y, now);
+          p.vx += f.vx * FIELD_STR * 60 * dtS;
+          p.vy += f.vy * FIELD_STR * 60 * dtS;
+        }
+
+        /* 4. Micro-orbit around home (perpetual motion flavor) */
+        p.orbitA += (0.6 + p.mass * 0.4) * dtS;
+        const orbX = Math.cos(p.orbitA) * p.orbitR;
+        const orbY = Math.sin(p.orbitA * 1.13) * p.orbitR;
+        p.vx += orbX * 0.02 * k;
+        p.vy += orbY * 0.02 * k;
+
+        /* 5. Idle Brownian jitter */
+        p.vx += (Math.random() - 0.5) * 0.16 * k;
+        p.vy += (Math.random() - 0.5) * 0.16 * k;
+
+        /* 6. Damping (viscous drag) */
+        p.vx *= damp;
+        p.vy *= damp;
+
+        /* 7. Speed clamp */
+        const sp2 = p.vx * p.vx + p.vy * p.vy;
+        if (sp2 > MAX_V * MAX_V) {
+          const s = MAX_V / Math.sqrt(sp2);
+          p.vx *= s; p.vy *= s;
+        }
+
+        /* 8. Integrate (Euler) */
+        p.x += p.vx * k;
+        p.y += p.vy * k;
+
+        ke += 0.5 * p.mass * sp2;
+        sumV2 += sp2;
+      }
+
+      if (p.alpha <= 0.001) continue;
+
+      /* ----- DRAW ----- */
+      const hue = (p.hue + hueShift) % 360;
+      const sprite = sprites[((hue * HUES / 360) | 0) % HUES];
+
+      let size = p.r * 1.95;
+      let alpha = p.alpha;
+
+      const br = 1 + Math.sin(idleT * 1.6 + p.idlePhase) * 0.09;
+      size *= br;
+
+      if (sheenActive) {
+        const sd = Math.abs(p.x - sheenX);
+        if (sd < sheenW) {
+          const boost = 1 - sd / sheenW;
+          size *= 1 + boost * 1.4;
+          alpha *= 1 + boost * 0.6;
+        }
+      }
+
+      // near-cursor glow
+      const ddx = p.x - mx, ddy = p.y - my;
+      const dd2 = ddx * ddx + ddy * ddy;
+      if (mouse.active && dd2 < AR2) {
+        const f = 1 - Math.sqrt(dd2) / AR;
+        size *= 1 + f * 0.9;
+        alpha *= 1 + f * 0.35;
+      }
+
+      ctx.globalAlpha = clamp(alpha, 0, 1.4);
+      ctx.drawImage(sprite, p.x - size, p.y - size, size * 2, size * 2);
+    }
+
+    /* ---------- INTRO ---------- */
+    if (!introComplete) {
+      drawIntroOrb(elapsedIntro);
+      drawIntroFlash(elapsedIntro);
+    }
+
+    ctx.globalAlpha = 1;
+    hueShift = (hueShift + 0.18 * k) % 360;
+
+    /* ---------- UPDATE MATH READOUT ---------- */
+    keSmooth += (ke / 1e5 - keSmooth) * 0.1;
+    entSmooth += (Math.sqrt(sumV2 / Math.max(1, particles.length)) * 0.5 - entSmooth) * 0.1;
+
+    if ((now | 0) % 4 === 0) {
+      elParts.textContent = particles.length;
+      elKE.textContent    = keSmooth.toFixed(2);
+      elEnt.textContent   = entSmooth.toFixed(2);
+      elG.textContent     = (G / 100).toFixed(2);
+      elField.textContent = fieldOn ? 'curl' : 'off';
+      elFps.textContent   = fpsSmooth.toFixed(0);
+    }
+  }
+
+  /* ============================================================
+     INTERACTION
+     ============================================================ */
+  window.addEventListener('pointermove', (e) => {
+    const nx = e.clientX * DPR;
+    const ny = e.clientY * DPR;
+    mouse.px = mouse.x;
+    mouse.py = mouse.y;
+    mouse.x = nx;
+    mouse.y = ny;
+    mouse.vx = nx - (mouse.px || nx);
+    mouse.vy = ny - (mouse.py || ny);
+    mouse.active = true;
+  }, { passive: true });
+
+  window.addEventListener('pointerleave', () => {
+    mouse.active = false;
+    mouse.x = mouse.y = -1e5;
+  });
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const cx = e.clientX * DPR;
+    const cy = e.clientY * DPR;
+
+    spawnRing(cx, cy, { maxR: 480 * DPR, hue: 200, width: 3 * DPR,   maxLife: 900 });
+    spawnRing(cx, cy, { maxR: 400 * DPR, hue: 280, width: 2.2 * DPR, maxLife: 900, delay: 80 });
+    spawnRing(cx, cy, { maxR: 320 * DPR, hue: 160, width: 1.6 * DPR, maxLife: 900, delay: 160 });
+
+    const radius = BLAST_R * DPR;
+    for (const p of particles) {
+      if (!p.introDone) continue;
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const d  = Math.hypot(dx, dy) || 1;
+      const f  = Math.max(0, 1 - d / radius);
+      const sp = (12 + Math.random() * 30) * DPR * f;
+      p.vx += (dx / d) * sp;
+      p.vy += (dy / d) * sp;
+    }
+  });
+
+  document.getElementById('reset').addEventListener('click', () => {
+    spawnRing(W / 2, H / 2, { maxR: 600 * DPR, hue: 210, width: 2.5 * DPR, maxLife: 1200 });
+    for (const p of particles) {
+      p.x  = Math.random() * W;
+      p.y  = Math.random() * H;
+      p.vx = (Math.random() - 0.5) * 20;
+      p.vy = (Math.random() - 0.5) * 20;
+    }
+  });
+
+  const toggleBtn = document.getElementById('toggle');
+  toggleBtn.addEventListener('click', () => {
+    fieldOn = !fieldOn;
+    toggleBtn.textContent = 'Field: ' + (fieldOn ? 'ON' : 'OFF');
+    toggleBtn.classList.toggle('on', fieldOn);
+    spawnRing(W / 2, H / 2, {
+      maxR: 500 * DPR,
+      hue: fieldOn ? 160 : 330,
+      width: 2 * DPR,
+      maxLife: 900
+    });
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      toggleBtn.click();
+    }
+  });
+
+  /* ============================================================
+     RESIZE
+     ============================================================ */
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resize, 160);
+  });
+
+  /* ============================================================
+     MATH READOUT REFS
+     ============================================================ */
+  const elParts = document.getElementById('m-parts');
+  const elKE    = document.getElementById('m-ke');
+  const elEnt   = document.getElementById('m-ent');
+  const elG     = document.getElementById('m-g');
+  const elField = document.getElementById('m-field');
+  const elFps   = document.getElementById('m-fps');
+
+  /* ============================================================
+     BOOT
+     ============================================================ */
+  async function init() {
+    buildSprites();
+    introStartTime = performance.now();
+
+    resize();
+
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (_) {}
+      buildParticles();
+      if (introComplete) {
+        for (const p of particles) {
+          p.introDone = true;
+          p.x = p.tx; p.y = p.ty;
+        }
+      }
+    }
+
+    setTimeout(() => {
+      spawnRing(W / 2, H / 2, { maxR: 700 * DPR, hue: 205, width: 4 * DPR,   maxLife: 1300 });
+      spawnRing(W / 2, H / 2, { maxR: 520 * DPR, hue: 285, width: 2.6 * DPR, maxLife: 1300, delay: 90 });
+      spawnRing(W / 2, H / 2, { maxR: 380 * DPR, hue: 160, width: 1.8 * DPR, maxLife: 1300, delay: 180 });
+    }, INTRO.FLASH_START);
+
+    requestAnimationFrame((t) => {
+      lastTime = t;
+      requestAnimationFrame(loop);
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
